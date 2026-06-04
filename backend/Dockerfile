@@ -3,7 +3,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка зависимостей сборки для psycopg2
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -13,9 +13,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install gunicorn
 
-COPY . .
+# --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+# Копируем содержимое папки backend в подпапку /app/backend, сохраняя структуру пакета
+COPY . ./backend
 
-# Открываем порт
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]
+# --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+# Запускаем Gunicorn, указывая на wsgi внутри пакета backend
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "backend.wsgi:app"]

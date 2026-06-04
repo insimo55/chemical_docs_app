@@ -27,7 +27,7 @@ services:
       UPLOAD_FOLDER: "uploads"
     volumes:
       # Маппим папку uploads на диск сервера, чтобы файлы не стерлись при перезапуске контейнера
-      - ./backend/uploads:/app/uploads
+      - ./backend/uploads:/app/backend/uploads
     depends_on:
       - db
 
