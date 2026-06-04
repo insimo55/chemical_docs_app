@@ -1,0 +1,35 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: chem_docs_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # Измените пароль на свой
+      POSTGRES_DB: chemical_docs_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chem_docs_backend
+    restart: always
+    ports:
+      - "127.0.0.1:5000:5000" # Доступно только локально для Nginx
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/chemical_docs_db
+      JWT_SECRET_KEY: "IBacgCGQh4iyWM0QkX4x78PNYJM3Zgb3Na4tBufCpMM" # Измените ключ
+      UPLOAD_FOLDER: "uploads"
+    volumes:
+      # Маппим папку uploads на диск сервера, чтобы файлы не стерлись при перезапуске контейнера
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

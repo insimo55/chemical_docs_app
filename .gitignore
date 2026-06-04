@@ -1,0 +1,20 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+.env
+
+# Flask
+instance/
+
+# Uploaded files
+backend/uploads/
+
+# Vue.js
+frontend/node_modules/
+frontend/dist/
+
+migrations/
