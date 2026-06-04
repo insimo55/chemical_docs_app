@@ -28,6 +28,7 @@ services:
     volumes:
       # Маппим папку uploads на диск сервера, чтобы файлы не стерлись при перезапуске контейнера
       - ./backend/uploads:/app/backend/uploads
+      - ./migrations:/app/migrations
     depends_on:
       - db
 
