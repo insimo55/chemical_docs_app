@@ -11,48 +11,51 @@ reagents_bp = Blueprint('reagents', __name__)
 
 # Хелпер для получения самого раннего срока действия документов
 def get_min_valid_until(reagent_id):
-    today = date.today() # Получаем текущую дату через стандартный Python
+    today = date.today()
     
-    # Ищем актуальные документы для реагента
-    actual_docs = Document.query.filter(
+    # 1. Загружаем ВСЕ документы реагента, помеченные как активные (is_active == True)
+    # Мы сознательно не фильтруем по датам в SQL, чтобы проверить наличие просроченных
+    docs = Document.query.filter(
         Document.reagent_id == reagent_id,
-        Document.is_active == True,
-        (Document.valid_until >= today) | (Document.valid_until == None)
+        Document.is_active == True
     ).all()
 
-    if not actual_docs:
-        return None, "No active documents" # Нет активных документов
+    if not docs:
+        return None, "No active documents"
 
-    min_date = None
-    all_expired = True
+    expired_dates = []
+    active_limited_dates = []
+    has_perpetual = False
 
-    for doc in actual_docs:
+    # 2. Распределяем документы по категориям
+    for doc in docs:
         if doc.valid_until:
-            if doc.valid_until >= today: # Сравниваем напрямую
-                all_expired = False
-                if min_date is None or doc.valid_until < min_date:
-                    min_date = doc.valid_until
-        else: # Документ бессрочный, если valid_until = None
-            all_expired = False
+            if doc.valid_until < today:
+                expired_dates.append(doc.valid_until) # Сюда попадет просроченный сертификат
+            else:
+                active_limited_dates.append(doc.valid_until) # Сюда попадет MSDS (2030)
+        else:
+            has_perpetual = True # Сюда попадут бессрочные ТУ и Паспорт партии
 
-    if all_expired and min_date is None: 
-        # Находим самый поздний просроченный для отображения
-        expired_doc = Document.query.filter(
-            Document.reagent_id == reagent_id,
-            Document.is_active == True,
-            Document.valid_until < today
-        ).order_by(desc(Document.valid_until)).first()
-        if expired_doc:
-            return expired_doc.valid_until, "Expired" 
-        return None, "No active documents" 
-    elif all_expired and min_date is not None: 
-        return min_date, "Expired" 
-    elif min_date:
-        if (min_date - today).days <= 30:
-            return min_date, "Expires soon"
-        return min_date, "Active"
-    else: 
+    # 3. Приоритет 1: Если есть ХОТЯ БЫ ОДИН просроченный документ — весь реагент просрочен!
+    if expired_dates:
+        # Берем самый ранний из просроченных, чтобы стимулировать обновление в первую очередь
+        min_expired_date = min(expired_dates)
+        return min_expired_date, "Expired"
+
+    # 4. Приоритет 2: Если просроченных нет, ищем документы с ограниченным сроком
+    if active_limited_dates:
+        min_active_date = min(active_limited_dates)
+        # Если до ближайшего окончания срока осталось 30 дней или меньше
+        if (min_active_date - today).days <= 30:
+            return min_active_date, "Expires soon"
+        return min_active_date, "Active"
+    
+    # 5. Приоритет 3: Если просроченных нет, дат с ограничениями нет, но есть бессрочные
+    if has_perpetual:
         return None, "Active (perpetual)"
+
+    return None, "No active documents"
 
 
 # Маршрут для создания нового реагента
